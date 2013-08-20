@@ -1,0 +1,320 @@
+@main("Redisみる夫") {
+    <script>
+
+        var ServerSettingsController = function($scope, $http){
+
+            var getSettingsPromise = function(){
+
+                return $http.get("/serverSettings").then(function(result){
+                    return result.data.map(function(e){
+                        return {
+                            value : e.id,
+                            label : e.host + ":" + e.port
+                        };
+                    });
+                });
+            };
+
+            $scope.list = function(){
+
+                return getSettingsPromise( ).then(function(settings){
+                    $scope.serverSettings = settings;
+                    $scope.serverSetting = settings[0].value;
+                });
+            };
+
+            $scope.register = function(){
+
+                var input = $scope.input;
+                $http({
+                    method : "POST",
+                    url : "/serverSettings",
+                    data : {
+                        "host" : input.host,
+                        "port" : parseInt(input.port),
+                        "password" : input.password,
+                        "description" : input.description
+                    }
+                }).then(function(response) {
+                    $scope.input = {};
+                    $scope.list();
+                    $("#server_register_success_message").show( ).fadeOut(3000);
+                });
+            };
+
+            $scope.refresh = function(){
+
+                angular.element("#connection").scope().refresh();
+            };
+
+            $scope.delete = function(){
+
+                if(window.confirm("削除します？")){
+                    var id = $scope.serverSetting;
+                    $http.delete("/serverSettings?id="+id).then(function(response) {
+
+                        $scope.list();
+                    });
+                }
+            };
+
+            $scope.list().then(function(){
+                $scope.refresh();
+            });
+        };
+
+        var ServerConnectionController = function($scope, $http){
+
+            var selectedServerId = function(){
+                var scope = angular.element("#settings").scope();
+                return scope.serverSetting;
+            };
+
+            $scope.refresh = function(){
+
+                var id = selectedServerId();
+                $http.get("/operation/keys?id="+id).then(function(response) {
+
+                    $scope.keys = response.data.keys;
+                });
+
+                $http.get("/operation/info?id="+id).then(function(response) {
+
+                    $scope.info = response.data.info;
+                });
+            };
+
+            $scope.getRecord = function(key){
+
+                var id = selectedServerId();
+                var encoded = encodeURIComponent(key);
+
+                $http.get("/operation/record?id="+id+"&key="+encoded).then(function(response) {
+
+                    $scope.record = {
+                        key  : response.data.key,
+                        type : response.data.type,
+                        ttl  : response.data.ttl,
+                        value : response.data.value
+                    };
+                });
+            };
+
+            $scope.info = {};
+            $scope.keys = [];
+        };
+
+    </script>
+
+
+        <h1>Redisみる夫</h1>
+
+        <div class="row" style="padding: 1em;">
+
+            <div class="col-lg-2 panel">
+
+                <div id="settings" ng-controller="ServerSettingsController">
+
+                    <form class="form-inline" role="form">
+                        <fieldset>
+                            <legend>接続先</legend>
+
+                            <div class="form-group pull-right">
+                                <label class="sr-only" for="settingSelection">接続先サーバ</label>
+                                <select id="settingSelection" class="form-control" name="servers"
+                                    ng-model="serverSetting"
+                                    ng-options="s.value as s.label for s in serverSettings"
+                                    ng-change="refresh()"
+                                    style="width: 214px;"
+                                >
+                                </select>
+                                <button class="btn btn-info" type="submit" ng-click="refresh()">
+                                    <span class="glyphicon glyphicon-refresh"></span>
+                                </button>
+                            </div>
+
+                            <div class="form-group pull-right">
+                                <button class="btn btn-danger" type="submit" ng-click="delete()">
+                                    <span class="glyphicon glyphicon-trash"></span>
+                                </button>
+                            </div>
+
+                            <div class="clearfix"></div>
+
+                        </fieldset>
+                    </form>
+
+                    <form class="form-horizontal">
+                        <fieldset>
+                            <legend>サーバ設定追加</legend>
+
+                            <div id="server_register_success_message" class="alert alert-success" style="display: none">
+                                <button type="button" class="close" aria-hidden="true"
+                                    onclick='$("#server_register_success_message").fadeOut();'>&times;</button>
+                                <span>登録しました</span>
+                            </div>
+
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label for="host_input"></label>
+                                    <input id="host_input" class="form-control" type= "text" name="host" ng-model="input.host" placeholder="host"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="port_input" class="col-lg-1"></label>
+                                    <input id="port_input" class="form-control" type= "text" name="port" ng-model="input.port" placeholder="port"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="password_input" class="col-lg-1"></label>
+                                    <input id="password_input" class="form-control" type= "text" name="password" ng-model="input.password" placeholder="password"/>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="description_input" class="col-lg-1"></label>
+                                    <input id="description_input" class="form-control" type= "text" name="description" ng-model="input.description" placeholder="description"/>
+                                </div>
+
+                                <div class="form-group pull-right">
+                                    <button class="btn btn-success" type="submit" ng-click="register()">登録</button>
+                                </div>
+                            </div>
+
+                        </fieldset>
+                    </form>
+                </div>
+            </div>
+
+            <div id="connection" class="col-lg-9" ng-controller="ServerConnectionController">
+
+                <div class="col-lg-12 tabbable">
+
+                    <ul class="nav nav-tabs" style="margin-bottom: 1em;">
+                        <li class="active">
+                            <a href="#keys" data-toggle="tab">keys <span class="badge">{{ keys.length }}</span></a>
+                        </li>
+                        <li>
+                            <a href="#tab2" data-toggle="tab">info</a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+
+                        <div class="tab-pane active" id="keys">
+
+                            <div class="col-lg-3">
+                                <div class="list-group">
+                                    <a class="list-group-item" style="overflow: auto;" ng-repeat="key in keys" href="" ng-click="getRecord(key)">
+                                        <span>{{ key }}</span>
+                                    </a>
+                                    <a class="list-group-item" ng-show="!keys.length" ng-disabled="">No Keys</a>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-9" ng-model="record">
+
+                                <div class="col-lg-2">
+
+                                    <div class="panel" style="border: 1px solid #dddddd;">
+
+                                        <div class="panel-heading"
+                                            style="background-color: #f5f5f5;border-bottom: 1px solid #dddddd;">
+
+                                            <h4 class="panel-title">Key Info</h4>
+                                        </div>
+
+                                        <div class="panel-body">
+                                            <dl>
+                                                <dt>Key</dt>
+                                                <dd style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">{{ record.key }}</dd>
+                                                <dd ng-show="!record.key"style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">&nbsp;</dd>
+                                                <dt>Type</dt>
+                                                <dd style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">{{ record.type }}</dd>
+                                                <dd ng-show="!record.type"style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">&nbsp;</dd>
+                                                <dt>TTL</dt>
+                                                <dd style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">{{ record.ttl }}</dd>
+                                                <dd ng-show="!record.ttl"style="margin-left: 1em; overflow: hidden; text-overflow: ellipsis;">&nbsp;</dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-10">
+
+                                    <div class="panel" style="border: 1px solid #dddddd;">
+
+                                        <div class="panel-heading"
+                                            style="background-color: #f5f5f5;border-bottom: 1px solid #dddddd;">
+
+                                            <h4 class="panel-title">Value(s)</h4>
+                                        </div>
+
+                                        <div class="panel-body" style="word-wrap: break-word;" ng-switch="record.type">
+                                            <div ng-switch-when="string">
+                                                <ul>
+                                                    <li>{{ record.value }}</li>
+                                                </ul>
+                                            </div>
+
+                                            <div ng-switch-when="list">
+                                                <ol>
+                                                    <li ng-repeat="e in record.value"><span>{{ e }}</span></li>
+                                                </ol>
+                                            </div>
+                                            <div ng-switch-when="set">
+                                                <ul>
+                                                    <li ng-repeat="e in record.value"><span>{{ e }}</span></li>
+                                                </ul>
+                                            </div>
+                                            <div ng-switch-when="zset">
+                                                <ol>
+                                                    <li ng-repeat="e in record.value"><span>{{ e }}</span></li>
+                                                </ol>
+                                            </div>
+                                            <div ng-switch-when="hash">
+                                                <dl>
+                                                    <div ng-repeat="(ekey, evalue) in record.value">
+                                                        <dt>{{ ekey }}</dt>
+                                                        <dd style="margin-left: 1em;">{{ evalue }}</dd>
+                                                    </div>
+                                                </dl>
+                                            </div>
+                                            <div ng-switch-default>
+                                                <span>No Contents</span>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="tab-pane" id="tab2">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>setting key</th>
+                                        <th>setting value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="i in info">
+                                        <td style="background-color: #f5f5f5;" ng-show="i.type == 'comment'" colspan="2">
+                                            <span>{{ i.body.comment }}</span>
+                                        </td>
+                                        <td ng-show="i.type == 'content'">
+                                            <span>{{ i.body.key }}</span>
+                                        </td>
+                                        <td ng-show="i.type == 'content'">
+                                            <span>{{ i.body.value }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+}
