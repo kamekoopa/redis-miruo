@@ -1,6 +1,7 @@
 package models.domain.redis
 
-import play.api.libs.json.{JsObject, JsArray, JsString, JsValue}
+import play.api.libs.json._
+import scala.Some
 
 /**
  * @author kamekoopa
@@ -12,37 +13,39 @@ sealed abstract class RedisValue {
   val set: Option[Set[String]] = None
   val zset: Option[Set[String]] = None
   val hash: Option[Map[String, String]] = None
-
-  def toJson: JsValue
 }
 
 final case class StringValue(v: String) extends RedisValue {
   override val string: Option[String] = Some(v)
-
-  def toJson = JsString(v)
 }
 
 final case class ListValue(v: List[String]) extends RedisValue {
   override val list: Option[List[String]] = Some(v)
-
-  def toJson = JsArray(v.toSeq.map(JsString))
 }
 
 final case class SetValue(v: Set[String]) extends RedisValue {
   override val set: Option[Set[String]] = Some(v)
-
-  def toJson = JsArray(v.toSeq.map(JsString))
 }
 
 final case class ZSetValue(v: Set[String]) extends RedisValue {
   override val zset: Option[Set[String]] = Some(v)
-
-  def toJson = JsArray(v.toSeq.map(JsString))
 }
 
 final case class HashValue(v: Map[String, String]) extends RedisValue {
   override val hash: Option[Map[String, String]] = Some(v)
-
-  def toJson = JsObject(v.toSeq.map( e => (e._1, JsString(e._2) )))
 }
 
+object RedisValueWrites{
+
+  implicit object DefaultRedisValueWrites extends Writes[RedisValue]{
+    def writes(o: RedisValue): JsValue = {
+      o match {
+        case StringValue(v) => Json.toJson(v)
+        case ListValue(v)   => Json.toJson(v)
+        case SetValue(v)    => Json.toJson(v)
+        case ZSetValue(v)   => Json.toJson(v)
+        case HashValue(v)   => Json.toJson(v)
+      }
+    }
+  }
+}

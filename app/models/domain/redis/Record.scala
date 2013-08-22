@@ -1,7 +1,7 @@
 package models.domain.redis
 
 import redis.clients.jedis.Jedis
-import play.api.libs.json.{JsString, JsNumber, JsObject, JsValue}
+import play.api.libs.json._
 
 /**
  * @author kamekoopa
@@ -9,15 +9,6 @@ import play.api.libs.json.{JsString, JsNumber, JsObject, JsValue}
 case class Record(key: Key, value: RedisValue, ttl: Long){
 
   val isNoExpiration: Boolean = ttl == -1
-
-  def toJson: JsValue = {
-    JsObject(Seq(
-      "key" -> JsString(key.name),
-      "type" -> JsString(key.keyType.keyType),
-      "value" -> value.toJson,
-      "ttl" -> JsNumber(ttl)
-    ))
-  }
 }
 
 object Record {
@@ -41,5 +32,21 @@ object Record {
       }
       new Record(key, value, ttl)
     })
+  }
+}
+
+
+import models.domain.redis.RedisValueWrites._
+
+object RecordWrites {
+  implicit object DefaultRecordWrites extends Writes[Record] {
+    def writes(o: Record): JsValue = {
+      Json.obj(
+        "key"   -> JsString(o.key.name),
+        "type"  -> JsString(o.key.keyType.keyType),
+        "value" -> Json.toJson(o.value),
+        "ttl"   -> JsNumber(o.ttl)
+      )
+    }
   }
 }

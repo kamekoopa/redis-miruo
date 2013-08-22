@@ -4,7 +4,7 @@ import models.domain.serversetting.ServerSettingRepository
 import models.infra.persistence.scalikejdbc.ScalikeServerSettingsRepository
 import play.api.mvc.{Controller, Action}
 import models.domain.Id
-import play.api.libs.json.{JsObject, JsArray, JsString}
+import play.api.libs.json.{Json, JsObject, JsArray, JsString}
 import models.domain.redis.RedisRepository
 
 /**
@@ -37,9 +37,11 @@ object ReferOperation extends Controller {
 
   def getRecord(id: String, key: String) = Action {
 
+    import models.domain.redis.RecordWrites._
+
     val result = for(
       server <- serverSettingRepository.find(Id(id));
-      record <- redisRepository.getRecord(server)(key).map( _.toJson )
+      record <- redisRepository.getRecord(server)(key).map( Json.toJson(_) )
     )yield record
 
     result match {

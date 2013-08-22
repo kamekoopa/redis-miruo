@@ -1,8 +1,7 @@
 package controllers.api
 
 import play.api.mvc.{Controller, Action}
-import play.api.libs.json.JsObject
-import play.api.libs.json.JsString
+import play.api.libs.json.{Json, JsString}
 import models.domain.serversetting.ServerSettingRepository
 import models.infra.persistence.scalikejdbc.ScalikeServerSettingsRepository
 import models.domain.Id
@@ -22,16 +21,17 @@ object GeneralOperation extends Controller {
       redisRepository.getInfo(setting)
     })
 
+    import models.domain.redis.InformationsWrites.DefaultInformationsWrites
     val result = maybeInfo match {
       case Some(info) => {
-        Ok(JsObject(Seq(
-          "info" -> info.toJson
-        )))
+        Ok(Json.obj(
+          "info" -> Json.toJson(info)
+        ))
       }
       case None => {
-        NotFound(JsObject(Seq(
+        NotFound(Json.obj(
           "error" -> JsString(s"id: $id setting not found")
-        )))
+        ))
       }
     }
 
